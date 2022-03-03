@@ -1,11 +1,21 @@
 // ignore_for_file: deprecated_member_use, package_api_docs, public_member_api_docs
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:network_info_plus/network_info_plus.dart';
 import 'package:wifi_iot/wifi_iot.dart';
-import 'dart:io' show Platform;
+import 'dart:io';
 
-const String STA_DEFAULT_SSID = "STA_SSID";
-const String STA_DEFAULT_PASSWORD = "STA_PASSWORD";
+import 'package:wifi_iot_example/networkInfo.dart';
+import 'package:http/http.dart' as http;
+
+// const String STA_DEFAULT_SSID = "STA_SSID";
+// const String STA_DEFAULT_PASSWORD = "STA_PASSWORD";
+// const NetworkSecurity STA_DEFAULT_SECURITY = NetworkSecurity.WPA;
+
+const String STA_DEFAULT_SSID = "ImanTpLink";
+const String STA_DEFAULT_PASSWORD = "ImanTpLink12341";
 const NetworkSecurity STA_DEFAULT_SECURITY = NetworkSecurity.WPA;
 
 const String AP_DEFAULT_SSID = "AP_SSID";
@@ -34,6 +44,9 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
   bool _isWifiDisableOpenSettings = false;
 
   final TextStyle textStyle = TextStyle(color: Colors.white);
+
+  final networkInfo = NetworkInfo();
+  Socket? _statusSocket;
 
   @override
   initState() {
@@ -265,11 +278,35 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
     } else {
       return SingleChildScrollView(
         child: SafeArea(
-          child: Column(
-            children: Platform.isIOS
-                ? getButtonWidgetsForiOS()
-                : getButtonWidgetsForAndroid(),
-          ),
+          child: Column(children: [
+            if (Platform.isIOS) ...getButtonWidgetsForiOS(),
+            if (Platform.isAndroid) ...getButtonWidgetsForAndroid(),
+            SizedBox(height: 50),
+            MaterialButton(
+              color: Colors.blue,
+              child: Text("Ping", style: textStyle),
+              onPressed: () {
+                _pingIP(ip: "192.168.1.1", port: 80);
+                //_httpCallLocalModem();
+              },
+            ),
+            // get network info
+            MaterialButton(
+              color: Colors.blue,
+              child: Text("Network info", style: textStyle),
+              onPressed: () {
+                _getNetworkInfo();
+              },
+            ),
+            // get network info
+            MaterialButton(
+              color: Colors.blue,
+              child: Text("connect to Wifi", style: textStyle),
+              onPressed: () {
+                _connectToWifi();
+              },
+            ),
+          ]),
         ),
       );
     }
@@ -696,6 +733,92 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
         body: getWidgets(),
       ),
     );
+  }
+
+  void _pingIP({required String ip, int port = 80}) async {
+    Socket.connect(ip, port, timeout: Duration(seconds: 3)).then((socket) {
+      print("Success");
+      _statusSocket = socket;
+      _statusSocket!.listen(_cameraStatusDataHandler,
+          onError: _cameraStatusErrorHandler,
+          onDone: _cameraStatusDoneHandler,
+          cancelOnError: false);
+      //socket.destroy();
+    }).catchError((error) {
+      print("Exception on Socket " + error.toString());
+    });
+
+    //NetworkConnection netInfo = NetworkConnection();
+    //bool _isConnected = await netInfo.isConnected;
+    print('f');
+  }
+
+  void _connectToWifi() async {
+    final _preHttpResult =
+        await _httpCallLocalModem(address: 'https://google.com');
+    String? currentSSID = await WiFiForIoTPlugin.getSSID();
+    bool connected = await WiFiForIoTPlugin.connect(STA_DEFAULT_SSID,
+        password: STA_DEFAULT_PASSWORD,
+        security: NetworkSecurity.WPA,
+        withInternet: false,
+        joinOnce: false);
+    print('f');
+
+    try {
+      final _postWifiConnectResult = _pingIP(ip: "192.168.1.1", port: 80);
+    } catch (e) {
+      print(e);
+    }
+
+    // _pingIP(ip: "8.8.8.8", port: 53);
+    try {
+      final _postHttpResult =
+          await _httpCallLocalModem(address: 'https://google.com');
+    } catch (e) {
+      print(e);
+    }
+    print('f');
+
+    //WiFiForIoTPlugin.connect(ssid)
+  }
+
+  void _getNetworkInfo() async {
+    var wifiName = await networkInfo.getWifiName(); // FooNetwork
+    var wifiBSSID = await networkInfo.getWifiBSSID(); // 11:22:33:44:55:66
+    var wifiIP = await networkInfo.getWifiIP(); // 192.168.1.43
+    var wifiIPv6 = await networkInfo
+        .getWifiIPv6(); // 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+    var wifiSubmask = await networkInfo.getWifiSubmask(); // 255.255.255.0
+    var wifiBroadcast = await networkInfo.getWifiBroadcast(); // 192.168.1.255
+    var wifiGateway = await networkInfo.getWifiGatewayIP(); // 192.168.1.1
+    print("Network info");
+  }
+
+  Future<bool> _httpCallLocalModem({required String address}) async {
+    final result = await http.get(Uri.parse(address));
+    print('f');
+    return result.statusCode == HttpStatus.ok ? true : false;
+  }
+
+  _cameraStatusDataHandler(event) async {
+    String data = utf8.decode(event);
+    RegExp exp = new RegExp(r"<Status>(\d*)<\/Status>", multiLine: true);
+    Iterable<RegExpMatch> matches = exp.allMatches(data);
+    String? status = matches
+        .map((e) => e.groupCount > 0 ? e.group(1) : [])
+        .toList()[0] as String?;
+    if (status == "506" || status == "507") {
+      // await _getBatteryInfo();
+    }
+  }
+
+  _cameraStatusErrorHandler(error, StackTrace trace) {
+    print('f');
+  }
+
+  _cameraStatusDoneHandler() {
+    print('f');
+    _statusSocket?.destroy();
   }
 }
 
