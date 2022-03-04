@@ -80,11 +80,16 @@ public class WifiIotPlugin
       65655437;
   private static final int PERMISSIONS_REQUEST_CODE_ACCESS_NETWORK_STATE_IS_CONNECTED = 65655438;
 
+  public ConnectivityManager globalConnectivityManager; 
+  // = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
   // initialize members of this class with Context
   private void initWithContext(Context context) {
     moContext = context;
     moWiFi = (WifiManager) moContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
     moWiFiAPManager = new WifiApManager(moContext.getApplicationContext());
+    // global connectivity manager
+    globalConnectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
   }
 
   // initialize members of this class with Activity
