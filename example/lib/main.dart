@@ -1,12 +1,13 @@
 // ignore_for_file: deprecated_member_use, package_api_docs, public_member_api_docs
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'dart:io';
-
+import 'package:dio_http2_adapter/dio_http2_adapter.dart';
 import 'package:wifi_iot_example/networkInfo.dart';
 import 'package:http/http.dart' as http;
 
@@ -47,6 +48,10 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
 
   final networkInfo = NetworkInfo();
   Socket? _statusSocket;
+
+  Color _apiCallColorResult = Colors.blue;
+  Color _apiWifiCallColorResult = Colors.blue;
+  Color _isWifiConnectedColorResult = Colors.blue;
 
   @override
   initState() {
@@ -290,12 +295,27 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                 //_httpCallLocalModem();
               },
             ),
+            /*
             // get network info
             MaterialButton(
               color: Colors.blue,
               child: Text("Network info", style: textStyle),
               onPressed: () {
                 _getNetworkInfo();
+              },
+            ),
+            */
+            // is wifi connected
+            MaterialButton(
+              color: _isWifiConnectedColorResult,
+              child: Text("is wifi connected", style: textStyle),
+              onPressed: () async {
+                _isWifiConnectedColorResult = Colors.blue;
+                final _isConnectedToWifi = await WiFiForIoTPlugin.isConnected();
+                if (_isConnectedToWifi)
+                  _isWifiConnectedColorResult = Colors.green;
+
+                setState(() {});
               },
             ),
             // get network info
@@ -306,10 +326,103 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                 _connectToWifi();
               },
             ),
+            // force wifi usage
+            MaterialButton(
+              color: Colors.blue,
+              child: Text("force Wifi usage", style: textStyle),
+              onPressed: () {
+                WiFiForIoTPlugin.forceWifiUsage(true);
+              },
+            ),
+            // mobile data call
+            MaterialButton(
+              color: Colors.blue,
+              child: Text("connect to mobile data", style: textStyle),
+              onPressed: () {
+                connectToMobileData();
+              },
+            ),
+            // Dio api call
+            MaterialButton(
+              color: _apiCallColorResult,
+              child: Text("dio api call", style: textStyle),
+              onPressed: () async {
+                _apiCallColorResult = Colors.blue;
+                setState(() {});
+
+                final result = await getHttp();
+                if (result) {
+                  _apiCallColorResult = Colors.green;
+                } else {
+                  _apiCallColorResult = Colors.red;
+                }
+                setState(() {});
+
+                final _isConnectedToWifi = await WiFiForIoTPlugin.isConnected();
+                print('f');
+              },
+            ),
+            // test wifi call
+            MaterialButton(
+              color: _apiWifiCallColorResult,
+              child: Text("test wifi call", style: textStyle),
+              onPressed: () async {
+                try {
+                  _apiWifiCallColorResult = Colors.blue;
+                  setState(() {});
+
+                  final _postHttpResult =
+                      await _httpCallLocalModem(address: "https://192.168.1.1");
+                  if (_postHttpResult) {
+                    _apiWifiCallColorResult = Colors.green;
+                  } else {
+                    _apiWifiCallColorResult = Colors.red;
+                  }
+                  setState(() {});
+                  print('f');
+                } catch (e) {
+                  print(e);
+                }
+              },
+            ),
           ]),
         ),
       );
     }
+  }
+
+  Future<bool> getHttp() async {
+    try {
+      var response = await Dio().get('http://www.google.com');
+      print(response);
+      if (response.statusCode == 200)
+        return true;
+      else
+        return false;
+    } catch (e) {
+      print(e);
+      return false;
+    }
+
+    /*
+    try {
+      var dio = Dio()
+        ..options.baseUrl = 'http://google.com'
+        ..interceptors.add(LogInterceptor())
+        ..httpClientAdapter = Http2Adapter(
+          ConnectionManager(idleTimeout: 10000),
+        );
+
+      Response<String> response;
+      response = await dio.get('/?xx=6');
+      response.redirects.forEach((e) {
+        print('redirect: ${e.statusCode} ${e.location}');
+      });
+      print(response.data);
+    } catch (e) {
+      print(e);
+    }
+    */
   }
 
   List<Widget> getButtonWidgetsForAndroid() {
@@ -754,8 +867,7 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
   }
 
   void _connectToWifi() async {
-    final _preHttpResult =
-        await _httpCallLocalModem(address: 'https://google.com');
+    // final _preHttpResult = await _httpCallLocalModem(address: 'https://google.com');
     String? currentSSID = await WiFiForIoTPlugin.getSSID();
     bool connected = await WiFiForIoTPlugin.connect(STA_DEFAULT_SSID,
         password: STA_DEFAULT_PASSWORD,
@@ -764,6 +876,7 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
         joinOnce: false);
     print('f');
 
+    /*
     try {
       final _postWifiConnectResult = _pingIP(ip: "192.168.1.1", port: 80);
     } catch (e) {
@@ -777,9 +890,14 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
     } catch (e) {
       print(e);
     }
+    */
     print('f');
 
     //WiFiForIoTPlugin.connect(ssid)
+  }
+
+  void connectToMobileData() async {
+    await WiFiForIoTPlugin.connectToMobileData();
   }
 
   void _getNetworkInfo() async {
@@ -795,9 +913,14 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
   }
 
   Future<bool> _httpCallLocalModem({required String address}) async {
-    final result = await http.get(Uri.parse(address));
-    print('f');
-    return result.statusCode == HttpStatus.ok ? true : false;
+    try {
+      final result = await http.get(Uri.parse(address));
+      print('f');
+      return result.statusCode == HttpStatus.ok ? true : false;
+    } catch (e) {
+      print('f');
+      return false;
+    }
   }
 
   _cameraStatusDataHandler(event) async {

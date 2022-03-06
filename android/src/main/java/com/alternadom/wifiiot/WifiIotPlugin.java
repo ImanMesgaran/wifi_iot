@@ -80,8 +80,10 @@ public class WifiIotPlugin
       65655437;
   private static final int PERMISSIONS_REQUEST_CODE_ACCESS_NETWORK_STATE_IS_CONNECTED = 65655438;
 
-  public ConnectivityManager globalConnectivityManager; 
+  //public ConnectivityManager globalConnectivityManager;
   // = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+  private ConnectivityManager.NetworkCallback mobileNetworkCallback;
 
   // initialize members of this class with Context
   private void initWithContext(Context context) {
@@ -89,7 +91,7 @@ public class WifiIotPlugin
     moWiFi = (WifiManager) moContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
     moWiFiAPManager = new WifiApManager(moContext.getApplicationContext());
     // global connectivity manager
-    globalConnectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+    // globalConnectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
   }
 
   // initialize members of this class with Activity
@@ -260,6 +262,8 @@ public class WifiIotPlugin
       case "connect":
         connect(poCall, poResult);
         break;
+      case "connectToMobileData":
+        connectToMobileData(poCall,poResult);
       case "registerWifiNetwork":
         registerWifiNetwork(poCall, poResult);
         break;
@@ -727,8 +731,7 @@ public class WifiIotPlugin
   private void forceWifiUsage(final MethodCall poCall, final Result poResult) {
     boolean useWifi = poCall.argument("useWifi");
 
-    final ConnectivityManager manager =
-        (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+    final ConnectivityManager manager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
 
     boolean success = true;
     boolean shouldReply = true;
@@ -762,6 +765,21 @@ public class WifiIotPlugin
                         poResult.success(result);
                       }
                     });
+              }
+
+              @Override
+              public void onUnavailable() {
+                super.onUnavailable();
+              }
+
+              @Override
+              public void onLost(@NonNull Network network) {
+                super.onLost(network);
+              }
+
+              @Override
+              public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                super.onCapabilitiesChanged(network, networkCapabilities);
               }
             });
 
@@ -1002,8 +1020,7 @@ public class WifiIotPlugin
   }
 
   private void _isConnected(Result poResult) {
-    ConnectivityManager connManager =
-        (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+    ConnectivityManager connManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
     boolean result = false;
     if (connManager != null) {
       // `connManager.getActiveNetwork` only return if the network has internet
@@ -1025,10 +1042,9 @@ public class WifiIotPlugin
 
   @SuppressWarnings("deprecation")
   private void isConnectedDeprecated(Result poResult) {
-    ConnectivityManager connManager =
-        (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+    ConnectivityManager connManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
     android.net.NetworkInfo mWifi =
-        connManager != null ? connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI) : null;
+            connManager != null ? connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI) : null;
 
     poResult.success(mWifi != null && mWifi.isConnected());
   }
@@ -1041,8 +1057,7 @@ public class WifiIotPlugin
       disconnected = moWiFi.disconnect();
     } else {
       if (networkCallback != null) {
-        final ConnectivityManager connectivityManager =
-            (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        final ConnectivityManager connectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         connectivityManager.unregisterNetworkCallback(networkCallback);
         networkCallback = null;
         disconnected = true;
@@ -1179,6 +1194,67 @@ public class WifiIotPlugin
     return sb.toString();
   }
 
+  private void connectToMobileData(final MethodCall poCall, final Result poResult) {
+    new Thread() {
+      @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+      public void run() {
+        final ConnectivityManager connectManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        final NetworkRequest networkRequest =
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build();
+
+        if (mobileNetworkCallback != null) connectManager.unregisterNetworkCallback(mobileNetworkCallback);
+
+        mobileNetworkCallback =
+                new ConnectivityManager.NetworkCallback() {
+                  boolean resultSent = false;
+
+                  @Override
+                  public void onAvailable(@NonNull Network network) {
+                    super.onAvailable(network);
+                    connectManager.bindProcessToNetwork(network);
+                    if (!resultSent) {
+                      poResult.success(true);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onUnavailable() {
+                    super.onUnavailable();
+                    connectManager.bindProcessToNetwork(null);
+                    if (!resultSent) {
+                      poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onLost(@NonNull Network network) {
+                    super.onLost(network);
+                    connectManager.bindProcessToNetwork(null);
+                    if (!resultSent) {
+                      poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                    super.onCapabilitiesChanged(network, networkCapabilities);
+                  }
+                };
+
+        // connectivityManager.requestNetwork(request, mobileNetworkCallback)
+
+        connectManager.requestNetwork(networkRequest, networkCallback);
+        }
+    }.start();
+  }
+
   /// Method to connect to WIFI Network
   private void connectTo(
       final Result poResult,
@@ -1297,8 +1373,7 @@ public class WifiIotPlugin
                 .setNetworkSpecifier(builder.build())
                 .build();
 
-        final ConnectivityManager connectivityManager =
-            (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        final ConnectivityManager connectivityManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
 
         if (networkCallback != null) connectivityManager.unregisterNetworkCallback(networkCallback);
 
@@ -1322,6 +1397,16 @@ public class WifiIotPlugin
                   poResult.success(false);
                   resultSent = true;
                 }
+              }
+
+              @Override
+              public void onLost(@NonNull Network network) {
+                super.onLost(network);
+              }
+
+              @Override
+              public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                super.onCapabilitiesChanged(network, networkCapabilities);
               }
             };
 
