@@ -1025,14 +1025,16 @@ public class WifiIotPlugin
     if (connManager != null) {
       // `connManager.getActiveNetwork` only return if the network has internet
       // therefore using `connManager.getAllNetworks()` to check all networks
-      for (final Network network : connManager.getAllNetworks()) {
-        final NetworkCapabilities capabilities =
-            network != null ? connManager.getNetworkCapabilities(network) : null;
-        final boolean isConnected =
-            capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
-        if (isConnected) {
-          result = true;
-          break;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        for (final Network network : connManager.getAllNetworks()) {
+          final NetworkCapabilities capabilities =
+              network != null ? connManager.getNetworkCapabilities(network) : null;
+          final boolean isConnected =
+              capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
+          if (isConnected) {
+            result = true;
+            break;
+          }
         }
       }
     }
@@ -1215,9 +1217,11 @@ public class WifiIotPlugin
                   @Override
                   public void onAvailable(@NonNull Network network) {
                     super.onAvailable(network);
-                    connectManager.bindProcessToNetwork(network);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      connectManager.bindProcessToNetwork(network);
+                    }
                     if (!resultSent) {
-                      poResult.success(true);
+                      //poResult.success(true);
                       resultSent = true;
                     }
                   }
@@ -1225,9 +1229,11 @@ public class WifiIotPlugin
                   @Override
                   public void onUnavailable() {
                     super.onUnavailable();
-                    connectManager.bindProcessToNetwork(null);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      connectManager.bindProcessToNetwork(null);
+                    }
                     if (!resultSent) {
-                      poResult.success(false);
+                      //poResult.success(false);
                       resultSent = true;
                     }
                   }
@@ -1235,9 +1241,11 @@ public class WifiIotPlugin
                   @Override
                   public void onLost(@NonNull Network network) {
                     super.onLost(network);
-                    connectManager.bindProcessToNetwork(null);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      connectManager.bindProcessToNetwork(null);
+                    }
                     if (!resultSent) {
-                      poResult.success(false);
+                      //poResult.success(false);
                       resultSent = true;
                     }
                   }
@@ -1250,7 +1258,7 @@ public class WifiIotPlugin
 
         // connectivityManager.requestNetwork(request, mobileNetworkCallback)
 
-        connectManager.requestNetwork(networkRequest, networkCallback);
+        connectManager.requestNetwork(networkRequest, mobileNetworkCallback);
         }
     }.start();
   }
