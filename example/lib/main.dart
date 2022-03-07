@@ -283,109 +283,115 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
     } else {
       return SingleChildScrollView(
         child: SafeArea(
-          child: Column(children: [
-            if (Platform.isIOS) ...getButtonWidgetsForiOS(),
-            if (Platform.isAndroid) ...getButtonWidgetsForAndroid(),
-            SizedBox(height: 50),
-            MaterialButton(
-              color: Colors.blue,
-              child: Text("Ping", style: textStyle),
-              onPressed: () {
-                _pingIP(ip: "192.168.1.1", port: 80);
-                //_httpCallLocalModem();
-              },
-            ),
-            /*
+          child: Center(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (Platform.isIOS) ...getButtonWidgetsForiOS(),
+                  //if (Platform.isAndroid) ...getButtonWidgetsForAndroid(),
+                  SizedBox(height: 50),
+                  MaterialButton(
+                    color: Colors.blue,
+                    child: Text("Ping", style: textStyle),
+                    onPressed: () {
+                      _pingIP(ip: "192.168.1.1", port: 80);
+                      //_httpCallLocalModem();
+                    },
+                  ),
+                  /*
             // get network info
             MaterialButton(
-              color: Colors.blue,
-              child: Text("Network info", style: textStyle),
-              onPressed: () {
-                _getNetworkInfo();
-              },
+                color: Colors.blue,
+                child: Text("Network info", style: textStyle),
+                onPressed: () {
+                  _getNetworkInfo();
+                },
             ),
             */
-            // is wifi connected
-            MaterialButton(
-              color: _isWifiConnectedColorResult,
-              child: Text("is wifi connected", style: textStyle),
-              onPressed: () async {
-                _isWifiConnectedColorResult = Colors.blue;
-                final _isConnectedToWifi = await WiFiForIoTPlugin.isConnected();
-                if (_isConnectedToWifi)
-                  _isWifiConnectedColorResult = Colors.green;
+                  // is wifi connected
+                  MaterialButton(
+                    color: _isWifiConnectedColorResult,
+                    child: Text("is wifi connected", style: textStyle),
+                    onPressed: () async {
+                      _isWifiConnectedColorResult = Colors.blue;
+                      final _isConnectedToWifi =
+                          await WiFiForIoTPlugin.isConnected();
+                      if (_isConnectedToWifi)
+                        _isWifiConnectedColorResult = Colors.green;
 
-                setState(() {});
-              },
-            ),
-            // get network info
-            MaterialButton(
-              color: Colors.blue,
-              child: Text("connect to Wifi", style: textStyle),
-              onPressed: () {
-                _connectToWifi();
-              },
-            ),
-            // force wifi usage
-            MaterialButton(
-              color: Colors.blue,
-              child: Text("force Wifi usage", style: textStyle),
-              onPressed: () {
-                WiFiForIoTPlugin.forceWifiUsage(true);
-              },
-            ),
-            // mobile data call
-            MaterialButton(
-              color: Colors.blue,
-              child: Text("connect to mobile data", style: textStyle),
-              onPressed: () {
-                connectToMobileData();
-              },
-            ),
-            // Dio api call
-            MaterialButton(
-              color: _apiCallColorResult,
-              child: Text("dio api call", style: textStyle),
-              onPressed: () async {
-                _apiCallColorResult = Colors.blue;
-                setState(() {});
+                      setState(() {});
+                    },
+                  ),
+                  // get network info
+                  MaterialButton(
+                    color: Colors.blue,
+                    child: Text("connect to Wifi", style: textStyle),
+                    onPressed: () {
+                      _connectToWifi();
+                    },
+                  ),
+                  // force wifi usage
+                  MaterialButton(
+                    color: Colors.blue,
+                    child: Text("force Wifi usage", style: textStyle),
+                    onPressed: () {
+                      WiFiForIoTPlugin.forceWifiUsage(true);
+                    },
+                  ),
+                  // mobile data call
+                  MaterialButton(
+                    color: Colors.blue,
+                    child: Text("connect to mobile data", style: textStyle),
+                    onPressed: () {
+                      connectToMobileData();
+                    },
+                  ),
+                  // Dio api call
+                  MaterialButton(
+                    color: _apiCallColorResult,
+                    child: Text("dio api call", style: textStyle),
+                    onPressed: () async {
+                      _apiCallColorResult = Colors.blue;
+                      setState(() {});
 
-                final result = await getHttp();
-                if (result) {
-                  _apiCallColorResult = Colors.green;
-                } else {
-                  _apiCallColorResult = Colors.red;
-                }
-                setState(() {});
+                      final result = await getHttp();
+                      if (result) {
+                        _apiCallColorResult = Colors.green;
+                      } else {
+                        _apiCallColorResult = Colors.red;
+                      }
+                      setState(() {});
 
-                final _isConnectedToWifi = await WiFiForIoTPlugin.isConnected();
-                print('f');
-              },
-            ),
-            // test wifi call
-            MaterialButton(
-              color: _apiWifiCallColorResult,
-              child: Text("test wifi call", style: textStyle),
-              onPressed: () async {
-                try {
-                  _apiWifiCallColorResult = Colors.blue;
-                  setState(() {});
+                      final _isConnectedToWifi =
+                          await WiFiForIoTPlugin.isConnected();
+                      print('f');
+                    },
+                  ),
+                  // test wifi call
+                  MaterialButton(
+                    color: _apiWifiCallColorResult,
+                    child: Text("test wifi call", style: textStyle),
+                    onPressed: () async {
+                      try {
+                        _apiWifiCallColorResult = Colors.blue;
+                        setState(() {});
 
-                  final _postHttpResult =
-                      await _httpCallLocalModem(address: "https://192.168.1.1");
-                  if (_postHttpResult) {
-                    _apiWifiCallColorResult = Colors.green;
-                  } else {
-                    _apiWifiCallColorResult = Colors.red;
-                  }
-                  setState(() {});
-                  print('f');
-                } catch (e) {
-                  print(e);
-                }
-              },
-            ),
-          ]),
+                        final _postHttpResult = await _httpCallLocalModem(
+                            address: "http://192.168.1.1");
+                        if (_postHttpResult) {
+                          _apiWifiCallColorResult = Colors.green;
+                        } else {
+                          _apiWifiCallColorResult = Colors.red;
+                        }
+                        setState(() {});
+                        print('f');
+                      } catch (e) {
+                        print(e);
+                      }
+                    },
+                  ),
+                ]),
+          ),
         ),
       );
     }
