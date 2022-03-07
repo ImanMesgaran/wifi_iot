@@ -1,4 +1,4 @@
-package com.alternadom.wifiiot
+/*package com.alternadom.wifiiot
 
 import android.content.ContentValues.TAG
 import android.content.Context
@@ -73,3 +73,4 @@ class kotlinSource {
         connectivityManager.requestNetwork(request, mobileNetworkCallback)
     }
 }
+*/

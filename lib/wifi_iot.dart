@@ -336,6 +336,16 @@ class WiFiForIoTPlugin {
     return bResult ?? false;
   }
 
+  static Future<bool> connectToMobileData() async {
+    bool? bResult;
+    try {
+      bResult = await _channel.invokeMethod('connectToMobileData');
+    } on MissingPluginException catch (e) {
+      print("MissingPluginException : ${e.toString()}");
+    }
+    return bResult ?? false;
+  }
+
   /// Register a network with the system in the device's wireless networks.
   /// Android only.
   ///
