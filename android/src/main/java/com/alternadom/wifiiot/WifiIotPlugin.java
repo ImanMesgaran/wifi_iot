@@ -11,6 +11,7 @@ import android.net.ConnectivityManager;
 import android.net.MacAddress;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.net.NetworkRequest;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
@@ -261,9 +262,15 @@ public class WifiIotPlugin
         break;
       case "connect":
         connect(poCall, poResult);
+        //connectToBothNetworks(poCall,poResult);
+
         break;
       case "connectToMobileData":
         connectToMobileData(poCall,poResult);
+        break;
+      case "connectToBothNetworks":
+        connectToBothNetworks(poCall,poResult);
+        break;
       case "registerWifiNetwork":
         registerWifiNetwork(poCall, poResult);
         break;
@@ -1196,6 +1203,151 @@ public class WifiIotPlugin
     return sb.toString();
   }
 
+  private void connectToBothNetworks(final MethodCall poCall, final Result poResult) {
+    new Thread() {
+      @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+      public void run() {
+        final ConnectivityManager connectivityManager = (ConnectivityManager)
+                moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        final NetworkRequest requestForWifi =
+                new NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        //.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+
+        final NetworkRequest requestForCellular =
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build();
+
+        final ConnectivityManager.NetworkCallback cbWifi = new ConnectivityManager.NetworkCallback() {
+          boolean resultSent = false;
+
+          @Override
+          public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+
+          }
+
+          @Override
+          public void onUnavailable() {
+            super.onUnavailable();
+
+          }
+
+          @Override
+          public void onLost(@NonNull Network network) {
+            super.onLost(network);
+
+          }
+
+          @Override
+          public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+          }
+        };
+
+        final ConnectivityManager.NetworkCallback cbCellular = new ConnectivityManager.NetworkCallback() {
+          @Override
+          public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+              connectivityManager.bindProcessToNetwork(network);
+            }
+
+          }
+
+          @Override
+          public void onUnavailable() {
+            super.onUnavailable();
+
+          }
+
+          @Override
+          public void onLost(@NonNull Network network) {
+            super.onLost(network);
+
+          }
+
+          @Override
+          public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+          }
+        };
+
+        connectivityManager.requestNetwork(requestForCellular, cbCellular);
+        connectivityManager.requestNetwork(requestForWifi, cbWifi);
+
+
+
+
+        /*
+        final ConnectivityManager connectManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        final NetworkRequest networkRequest =
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build();
+
+        if (mobileNetworkCallback != null) connectManager.unregisterNetworkCallback(mobileNetworkCallback);
+
+        mobileNetworkCallback =
+                new ConnectivityManager.NetworkCallback() {
+                  boolean resultSent = false;
+
+                  @Override
+                  public void onAvailable(@NonNull Network network) {
+                    super.onAvailable(network);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      connectManager.bindProcessToNetwork(network);
+                    }
+                    if (!resultSent) {
+                      //poResult.success(true);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onUnavailable() {
+                    super.onUnavailable();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      connectManager.bindProcessToNetwork(null);
+                    }
+                    if (!resultSent) {
+                      //poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onLost(@NonNull Network network) {
+                    super.onLost(network);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      connectManager.bindProcessToNetwork(null);
+                    }
+                    if (!resultSent) {
+                      //poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                    super.onCapabilitiesChanged(network, networkCapabilities);
+                  }
+                };
+
+        // connectivityManager.requestNetwork(request, mobileNetworkCallback)
+
+        connectManager.requestNetwork(networkRequest, mobileNetworkCallback);
+        */
+      }
+    }.start();
+  }
+
   private void connectToMobileData(final MethodCall poCall, final Result poResult) {
     new Thread() {
       @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -1396,6 +1548,10 @@ public class WifiIotPlugin
                   poResult.success(true);
                   resultSent = true;
                 }
+
+                final Network _defaultNetwork = connectivityManager.getActiveNetwork();
+                final NetworkInfo _defaultNetworkInfo = connectivityManager.getActiveNetworkInfo();
+                System.out.print("first statement. ");
               }
 
               @Override

@@ -346,6 +346,14 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                       connectToMobileData();
                     },
                   ),
+                  // connect to both networks
+                  MaterialButton(
+                    color: Colors.blue,
+                    child: Text("connect to both networks", style: textStyle),
+                    onPressed: () {
+                      connectToBothNetworks();
+                    },
+                  ),
                   // Dio api call
                   MaterialButton(
                     color: _apiCallColorResult,
@@ -904,6 +912,10 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
 
   void connectToMobileData() async {
     await WiFiForIoTPlugin.connectToMobileData();
+  }
+
+  void connectToBothNetworks() async {
+    await WiFiForIoTPlugin.connectToBothNetworks();
   }
 
   void _getNetworkInfo() async {

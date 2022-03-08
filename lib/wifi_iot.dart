@@ -343,6 +343,18 @@ class WiFiForIoTPlugin {
     } on MissingPluginException catch (e) {
       print("MissingPluginException : ${e.toString()}");
     }
+    print('f');
+    return bResult ?? false;
+  }
+
+  static Future<bool> connectToBothNetworks() async {
+    bool? bResult;
+    try {
+      bResult = await _channel.invokeMethod('connectToBothNetworks');
+    } on MissingPluginException catch (e) {
+      print("MissingPluginException : ${e.toString()}");
+    }
+    print('f');
     return bResult ?? false;
   }
 
