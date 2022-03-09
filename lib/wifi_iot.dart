@@ -346,6 +346,37 @@ class WiFiForIoTPlugin {
     return bResult ?? false;
   }
 
+  static Future<bool> connectToBothNetworks() async {
+    bool? bResult;
+    try {
+      bResult = await _channel.invokeMethod('connectToBothNetworks');
+    } on MissingPluginException catch (e) {
+      print("MissingPluginException : ${e.toString()}");
+    }
+    print('f');
+    return bResult ?? false;
+  }
+
+  static Future<bool> makeApiCall() async {
+    bool? bResult;
+    try {
+      bResult = await _channel.invokeMethod('apiCall');
+    } on MissingPluginException catch (e) {
+      print("MissingPluginException : ${e.toString()}");
+    }
+    return bResult ?? false;
+  }
+
+  static Future<bool> makeLocalNetworkCall() async {
+    bool? bResult;
+    try {
+      bResult = await _channel.invokeMethod('localNetworkCall');
+    } on MissingPluginException catch (e) {
+      print("MissingPluginException : ${e.toString()}");
+    }
+    return bResult ?? false;
+  }
+
   /// Register a network with the system in the device's wireless networks.
   /// Android only.
   ///
