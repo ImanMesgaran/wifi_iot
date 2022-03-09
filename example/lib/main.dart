@@ -357,21 +357,20 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                   // Dio api call
                   MaterialButton(
                     color: _apiCallColorResult,
-                    child: Text("dio api call", style: textStyle),
+                    child: Text("api call", style: textStyle),
                     onPressed: () async {
                       _apiCallColorResult = Colors.blue;
                       setState(() {});
 
-                      final result = await getHttp();
+                      /*final result = await getHttp();
                       if (result) {
                         _apiCallColorResult = Colors.green;
                       } else {
                         _apiCallColorResult = Colors.red;
                       }
-                      setState(() {});
+                      setState(() {});*/
 
-                      final _isConnectedToWifi =
-                          await WiFiForIoTPlugin.isConnected();
+                      await WiFiForIoTPlugin.makeApiCall();
                       print('f');
                     },
                   ),
@@ -384,6 +383,9 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                         _apiWifiCallColorResult = Colors.blue;
                         setState(() {});
 
+                        await WiFiForIoTPlugin.makeLocalNetworkCall();
+
+                        /*
                         final _postHttpResult = await _httpCallLocalModem(
                             address: "http://192.168.1.1");
                         if (_postHttpResult) {
@@ -393,6 +395,7 @@ class _FlutterWifiIoTState extends State<FlutterWifiIoT> {
                         }
                         setState(() {});
                         print('f');
+                        */
                       } catch (e) {
                         print(e);
                       }

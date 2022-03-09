@@ -42,6 +42,11 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener;
 import io.flutter.plugin.common.PluginRegistry.ViewDestroyListener;
 import io.flutter.view.FlutterNativeView;
+
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.SocketException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONArray;
@@ -85,6 +90,9 @@ public class WifiIotPlugin
   // = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
 
   private ConnectivityManager.NetworkCallback mobileNetworkCallback;
+
+  private ConnectivityManager.NetworkCallback mWifiNetworkCallback, mMobileNetworkCallback;
+  private Network mWifiNetwork, mMobileNetwork;
 
   // initialize members of this class with Context
   private void initWithContext(Context context) {
@@ -263,13 +271,20 @@ public class WifiIotPlugin
       case "connect":
         connect(poCall, poResult);
         //connectToBothNetworks(poCall,poResult);
-
         break;
       case "connectToMobileData":
         connectToMobileData(poCall,poResult);
         break;
+      case "apiCall":
+        makeHTTPRequest();
+        break;
+      case "localNetworkCall":
+        makeLocalHTTPRequest();
+        break;
       case "connectToBothNetworks":
-        connectToBothNetworks(poCall,poResult);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+          connectToBothNetworks(poCall,poResult);
+        }
         break;
       case "registerWifiNetwork":
         registerWifiNetwork(poCall, poResult);
@@ -1203,7 +1218,277 @@ public class WifiIotPlugin
     return sb.toString();
   }
 
+  @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
   private void connectToBothNetworks(final MethodCall poCall, final Result poResult) {
+    new Thread() {
+
+
+      public void run() {
+        /*
+        final ConnectivityManager manager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if(mWifiNetworkCallback == null){
+          //Init only once
+          mWifiNetworkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(final Network network) {
+              try {
+                //Save this network for later use
+                mWifiNetwork = network;
+              } catch (NullPointerException npe) {
+                npe.printStackTrace();
+              }
+            }
+          };
+        }
+
+
+
+        NetworkRequest.Builder wifiBuilder;
+        wifiBuilder = new NetworkRequest.Builder();
+//set the transport type do WIFI
+        wifiBuilder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
+        wifiBuilder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        manager.requestNetwork(wifiBuilder.build(), mWifiNetworkCallback);
+
+
+        if(mMobileNetworkCallback == null){
+          //Init only once
+          mMobileNetworkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(final Network network) {
+              try {
+                //Save this network for later use
+                mMobileNetwork = network;
+              } catch (NullPointerException npe) {
+                npe.printStackTrace();
+              }
+            }
+          };
+        }
+
+        NetworkRequest.Builder mobileNwBuilder;
+        mobileNwBuilder = new NetworkRequest.Builder();
+//set the transport type do Cellular
+        mobileNwBuilder.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+
+        manager.requestNetwork(mobileNwBuilder.build(), mMobileNetworkCallback);
+        */
+
+
+
+
+        final ConnectivityManager connectManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        NetworkRequest.Builder wifiBuilder;
+        wifiBuilder = new NetworkRequest.Builder();
+
+        final NetworkRequest wifiNetworkRequest =
+                new NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+
+        if (mWifiNetworkCallback != null) connectManager.unregisterNetworkCallback(mWifiNetworkCallback);
+
+        mWifiNetworkCallback =
+                new ConnectivityManager.NetworkCallback() {
+                  boolean resultSent = false;
+
+                  @Override
+                  public void onAvailable(@NonNull Network network) {
+                    mWifiNetwork = network;
+                    if (!resultSent) {
+                      poResult.success(true);
+                      resultSent = true;
+                    }
+
+                    //final Network _defaultNetwork = connectivityManager.getActiveNetwork();
+                    final NetworkInfo _defaultNetworkInfo = connectManager.getActiveNetworkInfo();
+                    System.out.print("first statement. ");
+                  }
+
+                  @Override
+                  public void onUnavailable() {
+                    super.onUnavailable();
+                    if (!resultSent) {
+                      poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onLost(@NonNull Network network) {
+                    super.onLost(network);
+                  }
+
+                  @Override
+                  public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                    super.onCapabilitiesChanged(network, networkCapabilities);
+                  }
+                };
+
+
+
+        final NetworkRequest mobileNetworkRequest =
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build();
+
+        if (mobileNetworkCallback != null) connectManager.unregisterNetworkCallback(mobileNetworkCallback);
+
+        mobileNetworkCallback =
+                new ConnectivityManager.NetworkCallback() {
+                  boolean resultSent = false;
+
+                  @Override
+                  public void onAvailable(@NonNull Network network) {
+                    mMobileNetwork = network;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      //connectManager.bindProcessToNetwork(network);
+                    }
+                    if (!resultSent) {
+                      //poResult.success(true);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onUnavailable() {
+                    super.onUnavailable();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      //connectManager.bindProcessToNetwork(null);
+                    }
+                    if (!resultSent) {
+                      //poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onLost(@NonNull Network network) {
+                    super.onLost(network);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      //connectManager.bindProcessToNetwork(null);
+                    }
+                    if (!resultSent) {
+                      //poResult.success(false);
+                      resultSent = true;
+                    }
+                  }
+
+                  @Override
+                  public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+                    super.onCapabilitiesChanged(network, networkCapabilities);
+                  }
+                };
+
+        connectManager.requestNetwork(mobileNetworkRequest, mobileNetworkCallback);
+
+        connectManager.requestNetwork(wifiNetworkRequest, mWifiNetworkCallback);
+
+      }
+    }.start();
+
+    //makeLocalHTTPRequest();
+    //makeHTTPRequest();
+  }
+
+  public void makeLocalHTTPRequest() {
+    new Thread(){
+      @Override
+      public void run() {
+        try {
+          URL url = new URL("http://192.168.1.1");
+          HttpURLConnection conn = null;
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            conn = (HttpURLConnection) mWifiNetwork.openConnection(url);
+
+            //Or use mMobileNetwork, if and when required
+            //conn = (HttpURLConnection) mMobileNetwork.openConnection(url);
+          } else {
+            conn = (HttpURLConnection) url.openConnection();
+          }
+          conn.setRequestProperty("Content-Type", "application/json");
+          conn.setReadTimeout(6 * 1000);
+          conn.setConnectTimeout(6 * 1000);
+
+          conn.setDoInput(true);
+          conn.setDoOutput(true);
+
+          conn.setRequestMethod("GET");
+
+          OutputStream os = conn.getOutputStream();
+          //os.write(payloadJson.getBytes());
+          os.close();
+
+          final int responseCode = conn.getResponseCode();
+
+          if (responseCode == HttpURLConnection.HTTP_OK) {
+            final String statusMessage = conn.getResponseMessage();
+            //Log this
+          }
+        } catch (SocketException se){
+          se.printStackTrace();
+        }
+        catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }.start();
+
+  }
+
+  public void makeHTTPRequest() {
+    new Thread(){
+      @Override
+      public void run() {
+        try {
+          URL url = new URL("http://www.google.com/?xx=6");
+          HttpURLConnection conn = null;
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            //conn = (HttpURLConnection) mWifiNetwork.openConnection(url);
+
+            //Or use mMobileNetwork, if and when required
+            conn = (HttpURLConnection) mMobileNetwork.openConnection(url);
+          } else {
+            conn = (HttpURLConnection) url.openConnection();
+          }
+          conn.setRequestProperty("Content-Type", "application/json");
+          conn.setReadTimeout(6 * 1000);
+          conn.setConnectTimeout(6 * 1000);
+
+          conn.setDoInput(true);
+          conn.setDoOutput(true);
+
+          conn.setRequestMethod("GET");
+
+          OutputStream os = conn.getOutputStream();
+          //os.write(payloadJson.getBytes());
+          os.close();
+
+          final int responseCode = conn.getResponseCode();
+
+          if (responseCode == HttpURLConnection.HTTP_OK) {
+            final String statusMessage = conn.getResponseMessage();
+            //Log this
+          }
+        } catch (SocketException se){
+          se.printStackTrace();
+        }
+        catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }.start();
+
+  }
+
+
+  /*
+  private void connectToBothNetworks(final MethodCall poCall, final Result poResult) {
+
     new Thread() {
       @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
       public void run() {
@@ -1280,73 +1565,9 @@ public class WifiIotPlugin
         connectivityManager.requestNetwork(requestForCellular, cbCellular);
         connectivityManager.requestNetwork(requestForWifi, cbWifi);
 
-
-
-
-        /*
-        final ConnectivityManager connectManager = (ConnectivityManager) moContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        final NetworkRequest networkRequest =
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        .build();
-
-        if (mobileNetworkCallback != null) connectManager.unregisterNetworkCallback(mobileNetworkCallback);
-
-        mobileNetworkCallback =
-                new ConnectivityManager.NetworkCallback() {
-                  boolean resultSent = false;
-
-                  @Override
-                  public void onAvailable(@NonNull Network network) {
-                    super.onAvailable(network);
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                      connectManager.bindProcessToNetwork(network);
-                    }
-                    if (!resultSent) {
-                      //poResult.success(true);
-                      resultSent = true;
-                    }
-                  }
-
-                  @Override
-                  public void onUnavailable() {
-                    super.onUnavailable();
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                      connectManager.bindProcessToNetwork(null);
-                    }
-                    if (!resultSent) {
-                      //poResult.success(false);
-                      resultSent = true;
-                    }
-                  }
-
-                  @Override
-                  public void onLost(@NonNull Network network) {
-                    super.onLost(network);
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                      connectManager.bindProcessToNetwork(null);
-                    }
-                    if (!resultSent) {
-                      //poResult.success(false);
-                      resultSent = true;
-                    }
-                  }
-
-                  @Override
-                  public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
-                    super.onCapabilitiesChanged(network, networkCapabilities);
-                  }
-                };
-
-        // connectivityManager.requestNetwork(request, mobileNetworkCallback)
-
-        connectManager.requestNetwork(networkRequest, mobileNetworkCallback);
-        */
       }
     }.start();
-  }
+  }*/
 
   private void connectToMobileData(final MethodCall poCall, final Result poResult) {
     new Thread() {
